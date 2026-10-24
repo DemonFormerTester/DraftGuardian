@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DraftGuardian v2.0 - Complete DECA Student Prototype</title>
+<style>
+  /* 
+   * DraftGuardian v2.0 - Complete DECA Student Prototype (Leo Cheng - ID: 23080)
+   * Built with 100% vanilla HTML/CSS/JS so it runs offline at competition!
+   * 
+   * ALL 8 INTEGRATED SYSTEMS:
+   * 1. Real Keystroke Cadence & Clipboard Telemetry
+   * 2. Real Webcam Pixel Face/Center Tracker (YCbCr Skin-Tone Centroid Math)
+   * 3. Room Audio Spike / Whisper-to-AI Detector (Web Audio API)
+   * 4. Non-Linear Editing / Cursor Jump Tracker
+   * 5. Tamper-Proof .DGUARD Cryptographic Export & SHA-256 Verifier (Web Crypto API)
+   * 6. Offline Crash-Recovery (localStorage Auto-Vault every 2s)
+   * 7. Oral Defense Auto-Quizzer (Web Speech API / Live Transcription + Vocab Check)
+   * 8. Student "Writing DNA" Baseline Calibration + Admin Lock (Passcode: 1102)
+   */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  body {
+    background-color: #f0f2f5;
+    color: #222;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  body.dark-mode {
+    background-color: #18191a;
+    color: #e4e6eb;
+  }
+
+  /* Simple Student Top Bar */
+  .top-bar {
+    background: #ffffff;
+    border-bottom: 2px solid #ccc;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  body.dark-mode .top-bar {
+    background: #242526;
+    border-color: #3a3b3c;
+  }
+
+  .doc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .fake-docs-logo {
+    width: 30px;
+    height: 30px;
+    background: #1a73e8;
+    color: white;
+    font-weight: bold;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  input[type="text"], input[type="password"], select, textarea {
+    font-size: 12px;
+    border: 1px solid #aaa;
+    padding: 4px 7px;
+    border-radius: 3px;
+  }
+
+  body.dark-mode input[type="text"],
+  body.dark-mode input[type="password"],
+  body.dark-mode select,
+  body.dark-mode textarea {
+    background: #3a3b3c;
+    color: #fff;
+    border-color: #555;
+  }
+
+  .autosave-badge {
+    font-size: 11px;
+    color: #188038;
+    background: #e6f4ea;
+    border: 1px solid #34a853;
+    padding: 3px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+
+  body.dark-mode .autosave-badge {
+    background: #13361c;
+    color: #81c995;
+  }
+
+  .demo-toolbar {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  button {
+    padding: 5px 8px;
+    font-size: 11px;
+    border-radius: 3px;
+    border: 1px solid #888;
+    background: #eee;
+    color: #111;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  button:hover {
+    background: #ddd;
+  }
+
+  body.dark-mode button {
+    background: #3a3b3c;
+    color: #eee;
+    border-color: #666;
+  }
+
+  .btn-blue { background: #1a73e8 !important; color: white !important; border-color: #1557b0 !important; }
+  .btn-blue:hover { background: #1557b0 !important; }
+
+  .btn-red { background: #d93025 !important; color: white !important; border-color: #a50e0e !important; }
+  .btn-red:hover { background: #b3261e !important; }
+
+  .btn-orange { background: #e65100 !important; color: white !important; border-color: #bf360c !important; }
+  .btn-orange:hover { background: #bf360c !important; }
+
+  .btn-green { background: #188038 !important; color: white !important; border-color: #137333 !important; }
+  .btn-green:hover { background: #137333 !important; }
+
+  .btn-purple { background: #6a1b9a !important; color: white !important; border-color: #4a148c !important; }
+  .btn-purple:hover { background: #4a148c !important; }
+
+  /* Main Split Layout */
+  .main-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .doc-scroll-area {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Time-Lapse Scrubber Bar (Admin Only) */
+  .replay-bar {
+    width: 100%;
+    max-width: 720px;
+    background: #fff;
+    border: 1px solid #1a73e8;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  body.dark-mode .replay-bar {
+    background: #242526;
+    border-color: #1a73e8;
+  }
+
+  .replay-bar input[type="range"] {
+    flex: 1;
+  }
+
+  /* Forensic Legend Bar (Admin Only) */
+  .forensic-legend {
+    width: 100%;
+    max-width: 720px;
+    background: #fff8e1;
+    border: 1px solid #fbc02d;
+    color: #222;
+    padding: 6px 12px;
+    font-size: 11px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  body.dark-mode .forensic-legend {
+    background: #2c2512;
+    color: #f1f3f4;
+    border-color: #fbc02d;
+  }
+
+  /* Document Sheet */
+  .doc-sheet {
+    width: 100%;
+    max-width: 720px;
+    min-height: 560px;
+    background: #ffffff;
+    border: 1px solid #bbb;
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.dark-mode .doc-sheet {
+    background: #242526;
+    border-color: #444;
+  }
+
+  .sheet-meta {
+    font-size: 12px;
+    color: #666;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  #essay-box {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 16px;
+    line-height: 1.65;
+    background: transparent;
+    color: inherit;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  #essay-box:empty:before {
+    content: attr(data-placeholder);
+    color: #888;
+    pointer-events: none;
+  }
+
+  /* FORENSIC HIGHLIGHTING RULES (HIDDEN FOR STUDENTS, VISIBLE FOR ADMIN 1102) */
+  .pasted-ai-span, .typed-ai-span, .verified-quote-span {
+    background: transparent;
+    color: inherit;
+    transition: all 0.2s;
+  }
+
+  /* RED: Clipboard Paste */
+  body.admin-unlocked .pasted-ai-span {
+    background-color: rgba(217, 48, 37, 0.22);
+    color: #b31412;
+    border-bottom: 2px solid #d93025;
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+  body.dark-mode.admin-unlocked .pasted-ai-span {
+    background-color: rgba(255, 82, 82, 0.28);
+    color: #ff8a80;
+  }
+  body.admin-unlocked .pasted-ai-span::before {
+    content: "[⚠ PASTE] ";
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    background: #d93025;
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-right: 4px;
+  }
+
+  /* ORANGE: Linguistic AI Pattern Detected */
+  body.admin-unlocked .typed-ai-span {
+    background-color: rgba(245, 124, 0, 0.24);
+    color: #e65100;
+    border-bottom: 2px solid #f57c00;
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+  body.dark-mode.admin-unlocked .typed-ai-span {
+    background-color: rgba(255, 152, 0, 0.28);
+    color: #ffcc80;
+  }
+  body.admin-unlocked .typed-ai-span::before {
+    content: "[🤖 AI DETECTED] ";
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    background: #e65100;
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-right: 4px;
+  }
+
+  /* BLUE: Verified Quote */
+  body.admin-unlocked .verified-quote-span {
+    background-color: rgba(26, 115, 232, 0.14);
+    border-bottom: 2px dashed #1a73e8;
+    padding: 1px 3px;
+  }
+  body.admin-unlocked .verified-quote-span::before {
+    content: "[✓ CITED QUOTE] ";
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    background: #1a73e8;
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-right: 4px;
+  }
+
+  /* Right Sidebar */
+  .extension-box {
+    width: 390px;
+    background: #202124;
+    color: #f1f3f4;
+    border-left: 2px solid #444;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    font-size: 12px;
+  }
+
+  .ext-top {
+    background: #171717;
+    padding: 10px 12px;
+    border-bottom: 1px solid #3c4043;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ext-section {
+    padding: 9px 12px;
+    border-bottom: 1px solid #3c4043;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #9aa0a6;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .trust-banner {
+    background: #171717;
+    border: 2px solid #34a853;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .trust-big-num {
+    font-size: 24px;
+    font-weight: bold;
+    color: #34a853;
+  }
+
+  /* AI Detector Box */
+  .gptzero-box {
+    background: #171717;
+    border: 1px solid #3c4043;
+    padding: 8px 10px;
+  }
+
+  .bar-row {
+    margin-bottom: 7px;
+  }
+
+  .bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 7px;
+    background: #2d2e30;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    transition: width 0.2s, background 0.2s;
+  }
+
+  .ai-words-found {
+    font-size: 10px;
+    color: #ffb74d;
+    margin-top: 5px;
+    font-family: monospace;
+    line-height: 1.35;
+  }
+
+  /* Secure API Vault Drawer */
+  .api-vault-drawer {
+    background: #111;
+    border: 1px solid #444;
+    padding: 8px;
+    margin-top: 6px;
+    display: none;
+    font-size: 11px;
+  }
+
+  .api-vault-drawer.open {
+    display: block;
+  }
+
+  .api-vault-drawer input, .api-vault-drawer select {
+    width: 100%;
+    background: #222;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 4px 6px;
+    margin-top: 3px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  /* REAL Webcam + Audio Monitor Box */
+  .webcam-box {
+    background: #171717;
+    border: 1px solid #3c4043;
+    padding: 8px;
+  }
+
+  .cam-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .video-container {
+    position: relative;
+    width: 135px;
+    height: 100px;
+    background: #000;
+    border: 1px solid #666;
+    flex-shrink: 0;
+  }
+
+  #webcam-video {
+    display: none;
+  }
+
+  #cam-canvas {
+    width: 135px;
+    height: 100px;
+    display: block;
+  }
+
+  .cam-stats {
+    flex: 1;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .status-pill {
+    display: inline-block;
+    padding: 2px 5px;
+    font-weight: bold;
+    font-size: 10px;
+    background: #3c4043;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+
+  .audio-meter-wrap {
+    margin-top: 7px;
+    padding-top: 6px;
+    border-top: 1px dashed #3c4043;
+  }
+
+  /* ADMIN LOCK PANEL */
+  .admin-lock-box {
+    background: #171717;
+    border: 1px dashed #666;
+    padding: 14px 12px;
+    margin: 12px;
+    text-align: center;
+  }
+
+  .admin-lock-box h4 {
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #fbc02d;
+  }
+
+  .admin-lock-box p {
+    font-size: 11px;
+    color: #9aa0a6;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .pass-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .pass-row input {
+    width: 120px;
+    background: #2b2b2b;
+    color: #fff;
+    border: 1px solid #555;
+    text-align: center;
+    font-family: monospace;
+    letter-spacing: 2px;
+  }
+
+  .admin-only {
+    display: none !important;
+  }
+
+  body.admin-unlocked .admin-only {
+    display: block !important;
+  }
+
+  body.admin-unlocked .admin-only-flex {
+    display: flex !important;
+  }
+
+  body.admin-unlocked #admin-lock-panel {
+    display: none !important;
+  }
+
+  .admin-only-flex {
+    display: none !important;
+  }
+
+  .admin-badge {
+    background: #fbc02d;
+    color: #000;
+    font-weight: bold;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .metric-card {
+    background: #171717;
+    padding: 5px 8px;
+    border: 1px solid #3c4043;
+  }
+
+  .metric-card small {
+    display: block;
+    font-size: 10px;
+    color: #9aa0a6;
+  }
+
+  .metric-card strong {
+    font-size: 13px;
+    color: #fff;
+  }
+
+  canvas#wpm-canvas {
+    width: 100%;
+    height: 46px;
+    background: #171717;
+    border: 1px solid #3c4043;
+    display: block;
+  }
+
+  .keyboard-heatmap {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    background: #171717;
+    padding: 5px;
+    border: 1px solid #3c4043;
+  }
+
+  .key-cell {
+    background: #2d2e30;
+    color: #9aa0a6;
+    font-size: 10px;
+    text-align: center;
+    padding: 2px 0;
+    font-family: monospace;
+  }
+
+  .terminal-box {
+    background: #000;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 11px;
+    height: 90px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid #3c4043;
+  }
+
+  .term-line { margin-bottom: 3px; }
+  .term-warn { color: #ff5252; }
+  .term-cite { color: #64b5f6; }
+
+  /* Modals */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  .modal-bg.show { display: flex; }
+
+  .modal-window {
+    background: #fff;
+    color: #111;
+    width: 95%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 2px solid #000;
+    padding: 16px;
+  }
+
+  .cert-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #ddd;
+    padding: 5px 0;
+    font-size: 12px;
+  }
+
+  .cert-essay-preview {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid #bbb;
+    background: #f9f9f9;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+
+  .cert-essay-preview .pasted-ai-span {
+    background-color: rgba(217, 48, 37, 0.22);
+    color: #b31412;
+    border-bottom: 2px solid #d93025;
+  }
+  .cert-essay-preview .typed-ai-span {
+    background-color: rgba(245, 124, 0, 0.24);
+    color: #e65100;
+    border-bottom: 2px solid #f57c00;
+  }
+
+  .hash-banner {
+    background: #f1f3f4;
+    border: 1px solid #ccc;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 11px;
+    margin-top: 8px;
+    word-break: break-all;
+  }
+
+  .verify-result-box {
+    margin-top: 10px;
+    padding: 12px;
+    border: 2px solid #666;
+    font-size: 13px;
+    display: none;
+  }
+
+  .quote-target-box {
+    background: #fff8e1;
+    border-left: 4px solid #e65100;
+    padding: 10px;
+    font-style: italic;
+    margin: 8px 0;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Controls -->
+  <div class="top-bar">
+    <div class="doc-header-left">
+      <div class="fake-docs-logo">D</div>
+      <input type="text" id="essay-title" value="English Essay" style="width:130px; font-weight:bold;">
+      <input type="text" id="student-name" value="Leo Cheng (ID: 23080)" style="width:150px;">
+      <!-- Feature #6: Offline Crash-Recovery Auto-Vault Status -->
+      <span id="autosave-indicator" class="autosave-badge">💾 Auto-Vault Ready</span>
+    </div>
+
+    <div class="demo-toolbar">
+      <!-- Always visible to students -->
+      <button onclick="openDNAModal()">🧬 Writing DNA</button>
+      <button onclick="addVerifiedQuote()">+ Cite Quote</button>
+      <button onclick="toggleDarkMode()">Dark Mode</button>
+
+      <!-- Hidden unless Admin Passcode 1102 is unlocked -->
+      <div class="admin-only-flex" style="gap:4px; align-items:center; border-left:2px solid #888; padding-left:8px; margin-left:4px; flex-wrap:wrap;">
+        <span class="admin-badge">ADMIN</span>
+        <button class="btn-blue" onclick="runStudentTypingDemo()">Auto-Type (Human)</button>
+        <button class="btn-orange" onclick="runTypedAISimulation()">Type AI Text</button>
+        <button class="btn-red" onclick="runChatGPTPasteDemo()">Paste ChatGPT</button>
+        <button class="btn-purple" onclick="openOralDefenseModal()">🎙️ Oral Quiz</button>
+        <button onclick="openVerifyModal()">🔍 Verify .DGUARD</button>
+        <button onclick="resetEverything()">Reset</button>
+        <button class="btn-green" onclick="showCertificate()">Export .DGUARD</button>
+        <button onclick="lockAdmin()">🔒 Lock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <div class="main-area">
+    <!-- Left: Document Area -->
+    <div class="doc-scroll-area">
+      <!-- Time-Lapse Scrubber (Admin Only) -->
+      <div class="replay-bar admin-only-flex">
+        <b>🎞️ Admin Time-Lapse Replay:</b>
+        <input type="range" id="history-slider" min="0" max="0" value="0" oninput="scrubHistory(this.value)">
+        <span id="snapshot-label">Live (0 steps)</span>
+      </div>
+
+      <!-- Forensic Highlight Legend (Admin Only) -->
+      <div class="forensic-legend admin-only-flex">
+        <b>🔍 Admin Forensic Highlights:</b>
+        <span>
+          <span style="background:rgba(217,48,37,0.22); color:#b31412; border-bottom:2px solid #d93025; padding:1px 4px; font-weight:bold;">Red = Clipboard Paste</span>
+          &nbsp;
+          <span style="background:rgba(245,124,0,0.24); color:#e65100; border-bottom:2px solid #f57c00; padding:1px 4px; font-weight:bold;">Orange = Flagged AI Sentence</span>
+          &nbsp;
+          <span style="background:rgba(26,115,232,0.15); border-bottom:2px dashed #1a73e8; padding:1px 4px; font-weight:bold;">Blue = Cited Quote</span>
+        </span>
+      </div>
+
+      <div class="doc-sheet">
+        <div class="sheet-meta">
+          <span id="dna-profile-status">Writing DNA Profile: Standard Default (Uncalibrated)</span>
+          <span id="word-counter">0 words | 0 chars</span>
+        </div>
+        <div id="essay-box" contenteditable="true" spellcheck="true" data-placeholder="Type or paste your essay here... DraftGuardian auto-saves every 2 seconds to localStorage so you never lose your work."></div>
+      </div>
+    </div>
+
+    <!-- Right: Extension Sidebar -->
+    <div class="extension-box">
+      <div class="ext-top">
+        <strong>DraftGuardian Extension v2.0</strong>
+        <span style="color:#ff5252; font-weight:bold;">● REC</span>
+      </div>
+
+      <!-- 1. Combined Human Trust Score (ALWAYS VISIBLE) -->
+      <div class="ext-section">
+        <div class="section-label">Combined Human Trust Score</div>
+        <div class="trust-banner" id="trust-box">
+          <div>
+            <div id="status-text" style="font-weight:bold; color:#34a853;">VERIFIED HUMAN</div>
+            <div id="engine-active-label" style="font-size:10px; color:#9aa0a6;">Keystrokes + Audio/Cam + Linguistic AI</div>
+          </div>
+          <div class="trust-big-num" id="score-display">100%</div>
+        </div>
+      </div>
+
+      <!-- 2. Webcam Face Check + Feature #3: Room Audio Spike / Whisper Detector -->
+      <div class="ext-section">
+        <div class="section-label">Webcam &amp; Room Audio Monitor</div>
+        <div class="webcam-box">
+          <div class="cam-row">
+            <div class="video-container">
+              <video id="webcam-video" autoplay playsinline muted></video>
+              <canvas id="cam-canvas" width="135" height="100"></canvas>
+            </div>
+            <div class="cam-stats">
+              <div id="cam-status-pill" class="status-pill">CAMERA OFF</div>
+              <div class="admin-only">Face X/Y: <b id="face-xy">-- , --</b></div>
+              <div class="admin-only">Pixel Area: <b id="face-size">0%</b></div>
+              <div>Away Timer: <b id="away-secs">0.0s</b></div>
+              <div style="margin-top:5px; display:flex; gap:4px; flex-wrap:wrap;">
+                <button onclick="toggleWebcam()" id="cam-btn" style="font-size:10px; padding:3px 6px;">📷 Start Cam</button>
+                <button onclick="calibrateFace()" id="cal-btn" style="font-size:10px; padding:3px 6px; display:none;">🎯 Center</button>
+                <button onclick="toggleMicMonitor()" id="mic-btn" style="font-size:10px; padding:3px 6px;">🎤 Start Mic</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature #3: Web Audio API Decibel & Whisper-to-AI Detector -->
+          <div class="audio-meter-wrap">
+            <div class="bar-header">
+              <span>🎙️ Room Audio / Whisper Check:</span>
+              <b id="audio-status-label" style="color:#9aa0a6;">Mic Off (Zero Audio Recorded)</b>
+            </div>
+            <div class="bar-track">
+              <div id="audio-db-bar" class="bar-fill" style="width:0%; background:#34a853;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. LOCKED PANEL (SHOWN UNTIL PASSCODE 1102 IS ENTERED) -->
+      <div id="admin-lock-panel" class="admin-lock-box">
+        <h4>🔒 System Telemetry &amp; AI Engine Locked</h4>
+        <p>Enter teacher passcode (<b>1102</b>) to unlock the <b>AI Detection Engine</b>, Oral Defense Quizzer, Cursor-Jump Forensics, SHA-256 Verifier, and Red/Orange text highlights.</p>
+        <div class="pass-row">
+          <input type="password" id="admin-pass-input" placeholder="Passcode" onkeydown="if(event.key==='Enter') unlockAdmin()">
+          <button class="btn-blue" onclick="unlockAdmin()">Unlock</button>
+        </div>
+        <div id="pass-error" style="color:#ff5252; font-size:11px; margin-top:6px; display:none;">Incorrect passcode.</div>
+      </div>
+
+      <!-- 4. DUAL-MODE AI DETECTOR ENGINE (ADMIN ONLY) -->
+      <div class="ext-section admin-only">
+        <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🧠 AI Detection Engine</span>
+          <div style="display:flex; gap:4px;">
+            <button onclick="toggleAPIVault()" style="padding:2px 5px; font-size:10px;">🔌 API Vault</button>
+            <button class="btn-blue" onclick="triggerFullAIScan()" style="padding:2px 6px; font-size:10px;">Scan Essay</button>
+          </div>
+        </div>
+
+        <div id="api-vault" class="api-vault-drawer">
+          <div style="color:#fbc02d; font-weight:bold; margin-bottom:4px;">🔒 Zero-Exposure API Vault (RAM Only)</div>
+          <div style="color:#9aa0a6; font-size:10px; margin-bottom:6px;">
+            Keys stay in temporary browser memory and are <b>never</b> saved in HTML code.
+          </div>
+          <label>Select Detection Engine:</label>
+          <select id="api-provider" onchange="updateEngineModeLabel()">
+            <option value="local">Local Statistical Entropy + N-Gram Engine (Offline)</option>
+            <option value="gemini">Google Gemini API (Live LLM Classifier)</option>
+            <option value="gptzero">GPTZero Official API (api.gptzero.me)</option>
+            <option value="proxy">Custom Cloudflare Worker Proxy URL</option>
+          </select>
+
+          <label>API Key or Proxy Endpoint (Hidden in RAM):</label>
+          <input type="password" id="session-api-key" placeholder="Paste Gemini / GPTZero Key or Proxy URL...">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="vault-status" style="color:#34a853; font-size:10px;">● Safe for Public Hosting</span>
+            <button onclick="saveVaultSettings()" class="btn-green" style="padding:2px 7px; font-size:10px;">Apply</button>
+          </div>
+        </div>
+
+        <div class="gptzero-box">
+          <div class="bar-row">
+            <div class="bar-header">
+              <span>AI Generation Probability:</span>
+              <b id="ai-prob-label" style="color:#34a853;">0% (Human Text)</b>
+            </div>
+            <div class="bar-track">
+              <div id="ai-prob-bar" class="bar-fill" style="width:2%; background:#34a853;"></div>
+            </div>
+          </div>
+
+          <div class="bar-row">
+            <div class="bar-header">
+              <span>Burstiness (Length Variance):</span>
+              <b id="burst-label" style="color:#64b5f6;">-- (Need 2+ sentences)</b>
+            </div>
+            <div class="bar-track">
+              <div id="burst-bar" class="bar-fill" style="width:50%; background:#64b5f6;"></div>
+            </div>
+          </div>
+
+          <div class="bar-row" style="margin-bottom:2px;">
+            <div class="bar-header">
+              <span>Perplexity &amp; Entropy Score:</span>
+              <b id="perp-label" style="color:#34a853;">100/100 (Natural)</b>
+            </div>
+            <div class="bar-track">
+              <div id="perp-bar" class="bar-fill" style="width:85%; background:#34a853;"></div>
+            </div>
+          </div>
+
+          <div id="ai-words-readout" class="ai-words-found">Flagged AI Patterns: None</div>
+        </div>
+      </div>
+
+      <!-- 5. ADMIN SESSION METRICS -->
+      <div class="ext-section admin-only">
+        <div class="section-label">Keystroke, Cursor &amp; Room Telemetry</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <small>Active Typing Time</small>
+            <strong id="time-val">00:00</strong>
+          </div>
+          <div class="metric-card">
+            <small>Total Keystrokes</small>
+            <strong id="keys-val">0</strong>
+          </div>
+          <div class="metric-card">
+            <small>Backspaces / Edits</small>
+            <strong id="edits-val">0</strong>
+          </div>
+          <div class="metric-card">
+            <small>Thinking Pauses (&gt;3s)</small>
+            <strong id="pauses-val">0</strong>
+          </div>
+          <div class="metric-card">
+            <small>Non-Linear Cursor Jumps</small>
+            <strong id="jumps-val" style="color:#64b5f6;">0 (Linear)</strong>
+          </div>
+          <div class="metric-card">
+            <small>Voice / Audio Spikes</small>
+            <strong id="audio-alerts-val" style="color:#fbc02d;">0</strong>
+          </div>
+          <div class="metric-card">
+            <small>Unverified Pastes</small>
+            <strong id="pastes-val" style="color:#ff5252;">0</strong>
+          </div>
+          <div class="metric-card">
+            <small>Look-Away / Tab Alerts</small>
+            <strong id="tabs-val" style="color:#fbc02d;">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- WPM Graph (Admin Only) -->
+      <div class="ext-section admin-only">
+        <div class="section-label" style="display:flex; justify-content:space-between;">
+          <span>Typing Speed (WPM)</span>
+          <span id="wpm-readout">0 WPM</span>
+        </div>
+        <canvas id="wpm-canvas" width="330" height="46"></canvas>
+      </div>
+
+      <!-- Keyboard Heatmap (Admin Only) -->
+      <div class="ext-section admin-only">
+        <div class="section-label">Key Frequency Map</div>
+        <div class="keyboard-heatmap" id="key-grid"></div>
+      </div>
+
+      <!-- Event Log (Admin Only) -->
+      <div class="ext-section admin-only" style="border-bottom:none;">
+        <div class="section-label">System Event Log</div>
+        <div class="terminal-box" id="console-log">
+          <div class="term-line">&gt; DraftGuardian v2.0 initialized.</div>
+          <div class="term-line">&gt; Auto-Vault crash recovery active.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: Export Certificate & Cryptographic .DGUARD File -->
+  <div class="modal-bg" id="cert-modal">
+    <div class="modal-window">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+        <h3 style="margin:0;">🛡️ DraftGuardian Cryptographic Report</h3>
+        <button onclick="closeCertModal()">Close</button>
+      </div>
+      <div class="cert-row"><b>Student:</b> <span id="c-student"></span></div>
+      <div class="cert-row"><b>Assignment:</b> <span id="c-title"></span></div>
+      <div class="cert-row"><b>Overall Verdict:</b> <b id="c-verdict">PASSED</b></div>
+      <div class="cert-row"><b>Combined Human Trust Score:</b> <b id="c-score">100%</b></div>
+      <div class="cert-row"><b>AI Detection Probability:</b> <b id="c-ai-prob">0%</b></div>
+      <div class="cert-row"><b>Burstiness &amp; Entropy:</b> <span id="c-linguistic"></span></div>
+      <div class="cert-row"><b>Keystrokes &amp; Revisions:</b> <span id="c-keys"></span></div>
+      <div class="cert-row"><b>Non-Linear Cursor Jumps:</b> <span id="c-jumps"></span></div>
+      <div class="cert-row"><b>Oral Defense Status:</b> <span id="c-oral">Not Taken</span></div>
+      <div class="cert-row"><b>Webcam / Tab / Audio Alerts:</b> <span id="c-tabs"></span></div>
+      <div class="cert-row"><b>Unverified Clipboard Pastes:</b> <span id="c-pastes"></span></div>
+
+      <!-- Feature #5: Real SHA-256 Cryptographic Signature -->
+      <div class="hash-banner">
+        <b>🔒 Tamper-Proof SHA-256 Digital Signature:</b><br>
+        <span id="c-sha256" style="color:#1a73e8;">Computing cryptographic signature...</span>
+      </div>
+
+      <div style="margin-top:8px; font-size:12px; font-weight:bold;">Forensic Document Breakdown (Red = Paste, Orange = AI Pattern):</div>
+      <div class="cert-essay-preview" id="c-essay-preview"></div>
+
+      <div style="margin-top:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+        <button class="btn-blue" onclick="downloadSignedDGUARD()">🔐 Download Signed .DGUARD File</button>
+        <button class="btn-green" onclick="window.print()">🖨️ Print Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Feature #5 - Teacher .DGUARD Tamper-Proof File Verifier -->
+  <div class="modal-bg" id="verify-modal">
+    <div class="modal-window">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+        <h3 style="margin:0;">🔍 Verify Student .DGUARD File (Anti-Tamper Check)</h3>
+        <button onclick="closeVerifyModal()">Close</button>
+      </div>
+      <p style="font-size:12px; color:#444; margin-bottom:10px;">
+        Upload a student's exported <b>.dguard</b> file. DraftGuardian will recompute the cryptographic <b>SHA-256 hash</b> of the essay and telemetry to prove whether the student edited the file or falsified their score after export.
+      </p>
+      <input type="file" id="dguard-file-input" accept=".dguard,.json" onchange="verifyUploadedDGUARD(this)" style="margin-bottom:10px;">
+      <div id="verify-result-box" class="verify-result-box"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Feature #1 - Oral Defense Auto-Quizzer (Web Speech API) -->
+  <div class="modal-bg" id="oral-modal">
+    <div class="modal-window">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+        <h3 style="margin:0;">🎙️ 15-Second Oral Defense Auto-Quizzer</h3>
+        <button onclick="closeOralDefenseModal()">Close</button>
+      </div>
+      <p style="font-size:12px; color:#444;">
+        DraftGuardian selected the most complex sentence from the essay below. Ask the student to explain what this sentence means in their own words (via Speech-to-Text or live typing) to verify authorship:
+      </p>
+      <div id="oral-target-sentence" class="quote-target-box"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:12px; font-weight:bold;">Student Explanation (Speak or Type):</span>
+        <button class="btn-purple" id="speech-rec-btn" onclick="startOralSpeechRecognition()">🎤 Speak Explanation</button>
+      </div>
+      <textarea id="oral-response-input" rows="3" style="width:100%; font-size:13px; padding:8px;" placeholder="Click 'Speak Explanation' or type what the sentence above means in simple words..."></textarea>
+
+      <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="oral-verdict-label" style="font-size:12px; font-weight:bold; color:#555;">Status: Waiting for student response...</span>
+        <button class="btn-green" onclick="evaluateOralDefense()">✅ Verify Comprehension</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Feature #2 - Student "Writing DNA" Baseline Calibration -->
+  <div class="modal-bg" id="dna-modal">
+    <div class="modal-window">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+        <h3 style="margin:0;">🧬 Student "Writing DNA" Baseline Calibration</h3>
+        <button onclick="closeDNAModal()">Close</button>
+      </div>
+      <p style="font-size:12px; color:#444; margin-bottom:8px;">
+        To protect English Language Learners (ESL) and neurodivergent students from false AI accusations, type the warm-up sentence below naturally to calibrate your personal WPM and cadence profile:
+      </p>
+      <div class="quote-target-box" style="border-left-color:#1a73e8; background:#e8f0fe;">
+        "Technology changes how students learn in school, but critical thinking remains our most important skill."
+      </div>
+      <textarea id="dna-sample-input" rows="3" style="width:100%; font-size:13px; padding:8px;" placeholder="Type the sentence above at your normal comfortable speed..."></textarea>
+      <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="dna-metrics-preview" style="font-size:12px; color:#1a73e8; font-weight:bold;">Keys: 0 | Edits: 0</span>
+        <button class="btn-blue" onclick="saveStudentDNAProfile()">💾 Save Personal Writing DNA</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const essayBox = document.getElementById('essay-box');
+  const historySlider = document.getElementById('history-slider');
+  const snapshotLabel = document.getElementById('snapshot-label');
+  const consoleLog = document.getElementById('console-log');
+
+  let secondsActive = 0;
+  let totalKeys = 0;
+  let totalEdits = 0;
+  let thinkingPauses = 0;
+  let unverifiedPastes = 0;
+  let verifiedQuotes = 0;
+  let tabAndCamAlerts = 0;
+
+  // Feature #1, #2, #3, #4 State Variables
+  let audioSpikes = 0;
+  let cursorJumps = 0;
+  let lastCursorOffset = 0;
+  let oralDefenseStatus = "Not Taken";
+  let oralBonus = 0;
+  let studentDNAProfile = null;
+
+  let behaviorScore = 100;
+  let linguisticAIProb = 0;
+  let lastBurstScore = 0;
+  let lastPerplexityScore = 100;
+  let trustScore = 100;
+
+  let isTypingNow = false;
+  let typingTimer = null;
+  let lastKeyTime = Date.now();
+  let recentKeyTimes = [];
+  let essaySnapshots = [""];
+  let wpmHistory = new Array(30).fill(0);
+
+  let runtimeApiKey = "";
+  let selectedProvider = "local";
+
+  // Secret salt used for Feature #5 SHA-256 Tamper-Proof Signing
+  const DGUARD_CRYPTO_SALT = "DG-DECA-2026-LEO-CHENG-23080-SECRET";
+
+  // =========================================================================
+  // FEATURE #6: OFFLINE CRASH-RECOVERY (localStorage AUTO-VAULT)
+  // =========================================================================
+  const VAULT_STORAGE_KEY = "DraftGuardian_AutoVault_v20";
+
+  function saveToAutoVault() {
+    try {
+      const payload = {
+        title: document.getElementById('essay-title').value,
+        student: document.getElementById('student-name').value,
+        essayHTML: essayBox.innerHTML,
+        secondsActive,
+        totalKeys,
+        totalEdits,
+        thinkingPauses,
+        unverifiedPastes,
+        verifiedQuotes,
+        tabAndCamAlerts,
+        audioSpikes,
+        cursorJumps,
+        oralDefenseStatus,
+        oralBonus,
+        studentDNAProfile,
+        behaviorScore,
+        keyCounts,
+        savedAt: new Date().toLocaleTimeString([], { hour12: false })
+      };
+      localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(payload));
+      const badge = document.getElementById('autosave-indicator');
+      if (badge) badge.textContent = `💾 Auto-Saved (${payload.savedAt})`;
+    } catch (e) {
+      // Ignore storage quota errors
+    }
+  }
+
+  function restoreFromAutoVault() {
+    try {
+      const raw = localStorage.getItem(VAULT_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data.essayHTML && !data.totalKeys && !data.studentDNAProfile) return;
+
+      document.getElementById('essay-title').value = data.title || "English Essay";
+      document.getElementById('student-name').value = data.student || "Leo Cheng (ID: 23080)";
+      essayBox.innerHTML = data.essayHTML || "";
+
+      secondsActive = data.secondsActive || 0;
+      totalKeys = data.totalKeys || 0;
+      totalEdits = data.totalEdits || 0;
+      thinkingPauses = data.thinkingPauses || 0;
+      unverifiedPastes = data.unverifiedPastes || 0;
+      verifiedQuotes = data.verifiedQuotes || 0;
+      tabAndCamAlerts = data.tabAndCamAlerts || 0;
+      audioSpikes = data.audioSpikes || 0;
+      cursorJumps = data.cursorJumps || 0;
+      oralDefenseStatus = data.oralDefenseStatus || "Not Taken";
+      oralBonus = data.oralBonus || 0;
+      studentDNAProfile = data.studentDNAProfile || null;
+      behaviorScore = data.behaviorScore ?? 100;
+
+      if (studentDNAProfile) {
+        document.getElementById('dna-profile-status').textContent = `🧬 Writing DNA Calibrated (${studentDNAProfile.wpm} WPM | ${studentDNAProfile.editRatio}% Edit Ratio)`;
+      }
+
+      const m = String(Math.floor(secondsActive / 60)).padStart(2, '0');
+      const s = String(secondsActive % 60).padStart(2, '0');
+      document.getElementById('time-val').textContent = `${m}:${s}`;
+      document.getElementById('keys-val').textContent = totalKeys;
+      document.getElementById('edits-val').textContent = totalEdits;
+      document.getElementById('pauses-val').textContent = thinkingPauses;
+      document.getElementById('pastes-val').textContent = unverifiedPastes;
+      document.getElementById('tabs-val').textContent = tabAndCamAlerts;
+      document.getElementById('audio-alerts-val').textContent = audioSpikes;
+      updateCursorJumpUI();
+
+      if (data.keyCounts) {
+        Object.keys(data.keyCounts).forEach(ltr => {
+          keyCounts[ltr] = data.keyCounts[ltr];
+          const cell = document.getElementById('key-' + ltr);
+          if (cell && keyCounts[ltr] > 0) {
+            const intensity = Math.min(1, keyCounts[ltr] / 10);
+            cell.style.background = `rgba(26, 115, 232, ${0.3 + intensity * 0.7})`;
+            cell.style.color = '#fff';
+          }
+        });
+      }
+
+      essaySnapshots = [essayBox.innerHTML];
+      updateWordCount();
+      runLocalStatisticalScan(false);
+      logEvent(`CRASH-RECOVERY: Restored session from Auto-Vault (${data.savedAt}).`, 'term-cite');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  setInterval(saveToAutoVault, 2000);
+
+  // =========================================================================
+  // FEATURE #1: ORAL DEFENSE AUTO-QUIZZER (WEB SPEECH API + COMPREHENSION)
+  // =========================================================================
+  let currentQuizSentence = "";
+
+  function openOralDefenseModal() {
+    const raw = essayBox.innerText.trim();
+    const sentences = raw.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20);
+    if (sentences.length === 0) {
+      currentQuizSentence = "Moreover, the socio-economic ramifications of rapid urbanization catalyzed unprecedented bourgeois stratification.";
+    } else {
+      // Pick the longest sentence in the student's essay to test them on
+      currentQuizSentence = sentences.reduce((a, b) => a.length >= b.length ? a : b);
+    }
+
+    document.getElementById('oral-target-sentence').textContent = `"${currentQuizSentence}."`;
+    document.getElementById('oral-response-input').value = '';
+    document.getElementById('oral-verdict-label').textContent = 'Status: Waiting for student explanation...';
+    document.getElementById('oral-verdict-label').style.color = '#555';
+    document.getElementById('oral-modal').classList.add('show');
+  }
+
+  function closeOralDefenseModal() {
+    document.getElementById('oral-modal').classList.remove('show');
+  }
+
+  function startOralSpeechRecognition() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('speech-rec-btn');
+    if (!SpeechRec) {
+      alert('Speech-to-Text is not supported in this browser. Type your explanation directly into the box below!');
+      return;
+    }
+
+    const rec = new SpeechRec();
+    rec.lang = 'en-US';
+    rec.interimResults = false;
+    btn.textContent = '🔴 Listening... Speak Now';
+
+    rec.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('oral-response-input').value = transcript;
+      btn.textContent = '🎤 Speak Explanation';
+    };
+
+    rec.onerror = () => {
+      btn.textContent = '🎤 Speak Explanation';
+    };
+
+    rec.onend = () => {
+      btn.textContent = '🎤 Speak Explanation';
+    };
+
+    rec.start();
+  }
+
+  function evaluateOralDefense() {
+    const explanation = document.getElementById('oral-response-input').value.trim();
+    const words = explanation.split(/\s+/).filter(Boolean);
+    const lbl = document.getElementById('oral-verdict-label');
+
+    // Check that the student didn't just copy-paste the exact sentence back, and provided a meaningful explanation (6+ words)
+    if (words.length >= 6 && explanation.toLowerCase() !== currentQuizSentence.toLowerCase()) {
+      oralDefenseStatus = "PASSED (Verified Comprehension)";
+      oralBonus = 12;
+      lbl.textContent = '✅ PASSED: Student explained concept in original words (+12% Trust Bonus)!';
+      lbl.style.color = '#188038';
+      recalculateCombinedTrust();
+      logEvent('ORAL DEFENSE PASSED: Student demonstrated authorship comprehension (+12% Trust).', 'term-cite');
+    } else {
+      oralDefenseStatus = "FAILED (Insufficient Explanation)";
+      oralBonus = -10;
+      lbl.textContent = '🚨 FAILED: Explanation too brief or copied verbatim (-10% Trust).';
+      lbl.style.color = '#d93025';
+      recalculateCombinedTrust();
+      logEvent('ORAL DEFENSE FAILED: Student could not explain flagged sentence.', 'term-warn');
+    }
+  }
+
+  // =========================================================================
+  // FEATURE #2: STUDENT "WRITING DNA" BASELINE CALIBRATION
+  // =========================================================================
+  let dnaStartTime = 0;
+  let dnaKeys = 0;
+  let dnaEdits = 0;
+
+  function openDNAModal() {
+    dnaStartTime = 0;
+    dnaKeys = 0;
+    dnaEdits = 0;
+    document.getElementById('dna-sample-input').value = '';
+    document.getElementById('dna-metrics-preview').textContent = 'Keys: 0 | Edits: 0';
+    document.getElementById('dna-modal').classList.add('show');
+  }
+
+  function closeDNAModal() {
+    document.getElementById('dna-modal').classList.remove('show');
+  }
+
+  document.getElementById('dna-sample-input').addEventListener('keydown', (e) => {
+    if (!dnaStartTime) dnaStartTime = Date.now();
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      dnaEdits++;
+    } else if (e.key.length === 1) {
+      dnaKeys++;
+    }
+    document.getElementById('dna-metrics-preview').textContent = `Keys: ${dnaKeys} | Edits: ${dnaEdits}`;
+  });
+
+  function saveStudentDNAProfile() {
+    const sample = document.getElementById('dna-sample-input').value.trim();
+    const words = sample.split(/\s+/).filter(Boolean).length;
+    if (words < 5) {
+      alert('Please type at least 5 words of the warm-up sentence to calibrate your Writing DNA.');
+      return;
+    }
+
+    const elapsedMinutes = Math.max(0.08, (Date.now() - dnaStartTime) / 60000);
+    const calibratedWPM = Math.min(130, Math.max(18, Math.round(words / elapsedMinutes)));
+    const editRatio = Math.round((dnaEdits / Math.max(1, dnaKeys)) * 100);
+
+    studentDNAProfile = { wpm: calibratedWPM, editRatio: editRatio };
+    document.getElementById('dna-profile-status').textContent = `🧬 Writing DNA Calibrated (${calibratedWPM} WPM | ${editRatio}% Edit Ratio)`;
+    closeDNAModal();
+    saveToAutoVault();
+    logEvent(`Calibrated Student Writing DNA Baseline: ${calibratedWPM} WPM, ${editRatio}% revision rate.`, 'term-cite');
+  }
+
+  // =========================================================================
+  // FEATURE #3: ROOM AUDIO SPIKE / WHISPER-TO-AI DETECTOR (WEB AUDIO API)
+  // =========================================================================
+  let micRunning = false;
+  let audioCtx = null;
+  let analyser = null;
+  let micStream = null;
+  let loudSpeechTicks = 0;
+
+  async function toggleMicMonitor() {
+    const btn = document.getElementById('mic-btn');
+    const lbl = document.getElementById('audio-status-label');
+    const bar = document.getElementById('audio-db-bar');
+
+    if (!micRunning) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(micStream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        micRunning = true;
+        btn.textContent = '⏹ Stop Mic';
+        lbl.textContent = 'Listening (Quiet)';
+        lbl.style.color = '#34a853';
+        logEvent('Room Audio Spike / Whisper detector active (Zero audio saved).');
+      } catch (err) {
+        alert('Microphone permission required for Room Audio Monitor.');
+        logEvent('Mic error: ' + err.message, 'term-warn');
+      }
+    } else {
+      if (micStream) micStream.getTracks().forEach(t => t.stop());
+      if (audioCtx) audioCtx.close();
+      micRunning = false;
+      btn.textContent = '🎤 Start Mic';
+      lbl.textContent = 'Mic Off';
+      lbl.style.color = '#9aa0a6';
+      bar.style.width = '0%';
+      logEvent('Room Audio Monitor stopped.');
+    }
+  }
+
+  setInterval(() => {
+    if (!micRunning || !analyser) return;
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(dataArray);
+
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      sum += dataArray[i];
+    }
+    const avgVolume = sum / dataArray.length;
+    const pct = Math.min(100, Math.round((avgVolume / 85) * 100));
+
+    const bar = document.getElementById('audio-db-bar');
+    const lbl = document.getElementById('audio-status-label');
+    bar.style.width = pct + '%';
+
+    if (pct > 38 && !isTypingNow) {
+      loudSpeechTicks++;
+      bar.style.background = '#ff5252';
+      lbl.textContent = `⚠ Voice Detected While Idle (${pct}%)`;
+      lbl.style.color = '#ff5252';
+
+      if (loudSpeechTicks > 0 && loudSpeechTicks % 18 === 0) {
+        audioSpikes++;
+        document.getElementById('audio-alerts-val').textContent = audioSpikes;
+        behaviorScore = Math.max(15, behaviorScore - 8);
+        recalculateCombinedTrust();
+        logEvent('AUDIO ALERT: Voice/whispering detected while keyboard idle (Possible AI Voice Assistant)!', 'term-warn');
+      }
+    } else {
+      loudSpeechTicks = Math.max(0, loudSpeechTicks - 1);
+      bar.style.background = pct > 25 ? '#fbc02d' : '#34a853';
+      lbl.textContent = `Room Level: ${pct}% (Normal)`;
+      lbl.style.color = '#34a853';
+    }
+  }, 100);
+
+  // =========================================================================
+  // FEATURE #4: NON-LINEAR EDITING / CURSOR JUMP TRACKER
+  // =========================================================================
+  function getCaretCharacterOffsetWithin(element) {
+    let caretOffset = 0;
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(element);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      caretOffset = preCaretRange.toString().length;
+    }
+    return caretOffset;
+  }
+
+  function checkCursorJump() {
+    const currentOffset = getCaretCharacterOffsetWithin(essayBox);
+    const totalLen = essayBox.innerText.length;
+
+    if (totalLen > 30 && Math.abs(currentOffset - lastCursorOffset) > 15 && currentOffset < totalLen - 8) {
+      cursorJumps++;
+      updateCursorJumpUI();
+      logEvent(`Non-linear cursor jump detected (Moved to char #${currentOffset} to edit).`, 'term-cite');
+    }
+    lastCursorOffset = currentOffset;
+  }
+
+  function updateCursorJumpUI() {
+    const el = document.getElementById('jumps-val');
+    if (cursorJumps === 0) {
+      el.textContent = '0 (Strictly Linear)';
+      el.style.color = '#fbc02d';
+    } else {
+      el.textContent = `${cursorJumps} (Organic Edits)`;
+      el.style.color = '#34a853';
+    }
+  }
+
+  essayBox.addEventListener('mouseup', checkCursorJump);
+  essayBox.addEventListener('keyup', (e) => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+      checkCursorJump();
+    } else {
+      lastCursorOffset = getCaretCharacterOffsetWithin(essayBox);
+    }
+  });
+
+  // =========================================================================
+  // FEATURE #5: TAMPER-PROOF .DGUARD CRYPTOGRAPHIC EXPORT & SHA-256 VERIFIER
+  // =========================================================================
+  async function computeSHA256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function buildSignedPayload() {
+    const payload = {
+      protocol: "DraftGuardian-TamperProof-v2.0",
+      student: document.getElementById('student-name').value,
+      assignment: document.getElementById('essay-title').value,
+      combinedTrustScore: trustScore,
+      aiProbabilityPercent: linguisticAIProb,
+      burstinessScore: lastBurstScore,
+      perplexityScore: lastPerplexityScore,
+      keystrokes: totalKeys,
+      backspaces: totalEdits,
+      thinkingPauses: thinkingPauses,
+      nonLinearCursorJumps: cursorJumps,
+      oralDefenseStatus: oralDefenseStatus,
+      audioVoiceSpikes: audioSpikes,
+      unverifiedPastes: unverifiedPastes,
+      camAndTabAlerts: tabAndCamAlerts,
+      essayPlainText: essayBox.innerText.trim(),
+      essayForensicHTML: essayBox.innerHTML
+    };
+
+    const canonicalString = `${payload.student}|${payload.assignment}|${payload.combinedTrustScore}|${payload.aiProbabilityPercent}|${payload.keystrokes}|${payload.backspaces}|${payload.unverifiedPastes}|${payload.essayPlainText}|${DGUARD_CRYPTO_SALT}`;
+    payload.sha256Signature = await computeSHA256(canonicalString);
+    return payload;
+  }
+
+  async function downloadSignedDGUARD() {
+    const signedData = await buildSignedPayload();
+    const blob = new Blob([JSON.stringify(signedData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${signedData.student.replace(/[^a-z0-9]/gi, '_')}_Report.dguard`;
+    a.click();
+    logEvent(`Exported cryptographically signed .DGUARD file (SHA-256: ${signedData.sha256Signature.slice(0, 12)}...).`, 'term-cite');
+  }
+
+  function openVerifyModal() {
+    document.getElementById('verify-result-box').style.display = 'none';
+    document.getElementById('dguard-file-input').value = '';
+    document.getElementById('verify-modal').classList.add('show');
+  }
+
+  function closeVerifyModal() {
+    document.getElementById('verify-modal').classList.remove('show');
+  }
+
+  async function verifyUploadedDGUARD(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const box = document.getElementById('verify-result-box');
+    box.style.display = 'block';
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      const expectedCanonical = `${data.student}|${data.assignment}|${data.combinedTrustScore}|${data.aiProbabilityPercent}|${data.keystrokes}|${data.backspaces}|${data.unverifiedPastes}|${data.essayPlainText}|${DGUARD_CRYPTO_SALT}`;
+      const recomputedHash = await computeSHA256(expectedCanonical);
+
+      if (data.sha256Signature && data.sha256Signature === recomputedHash) {
+        box.style.background = '#e6f4ea';
+        box.style.borderColor = '#188038';
+        box.style.color = '#137333';
+        box.innerHTML = `
+          <h4 style="margin-bottom:6px;">✅ CRYPTOGRAPHIC SIGNATURE VERIFIED (AUTHENTIC)</h4>
+          <div><b>Student:</b> ${data.student} | <b>Trust Score:</b> ${data.combinedTrustScore}%</div>
+          <div><b>Keystrokes:</b> ${data.keystrokes} | <b>Cursor Jumps:</b> ${data.nonLinearCursorJumps ?? 0} | <b>Pastes:</b> ${data.unverifiedPastes}</div>
+          <div style="font-family:monospace; font-size:10px; margin-top:6px; word-break:break-all;">
+            <b>Matched SHA-256:</b> ${recomputedHash}
+          </div>
+        `;
+      } else {
+        box.style.background = '#fce8e6';
+        box.style.borderColor = '#d93025';
+        box.style.color = '#a50e0e';
+        box.innerHTML = `
+          <h4 style="margin-bottom:6px;">🚨 TAMPER ALERT: DIGITAL SIGNATURE MISMATCH!</h4>
+          <p>This <b>.dguard</b> file was modified after export (e.g., the student edited their Trust Score, keystroke count, or essay text in Notepad).</p>
+          <div style="font-family:monospace; font-size:10px; margin-top:6px; word-break:break-all;">
+            <b>File Signature:</b> ${data.sha256Signature || 'Missing'}<br>
+            <b>Actual Hash:</b> ${recomputedHash}
+          </div>
+        `;
+      }
+    } catch (err) {
+      box.style.background = '#fce8e6';
+      box.style.borderColor = '#d93025';
+      box.textContent = 'Invalid or corrupted .dguard file format.';
+    }
+  }
+
+  // =========================================================================
+  // MULTI-LAYER STATISTICAL AI DETECTION ENGINE
+  // =========================================================================
+  const AI_PHRASE_PATTERNS = [
+    "it is important to note", "plays a crucial role", "serves as a testament",
+    "delves into the", "a complex tapestry", "not only", "in conclusion",
+    "on the other hand", "a wide range of", "paving the way for",
+    "sheds light on", "in today's rapidly evolving", "cannot be overstated",
+    "underscore the importance", "underscores the pivotal", "catalyze unprecedented",
+    "socio-economic ramifications", "metropolitan epicenters"
+  ];
+
+  const AI_SINGLE_TOKENS = [
+    "moreover", "furthermore", "consequently", "nevertheless", "nonetheless",
+    "delve", "delves", "delving", "tapestry", "testament", "underscores",
+    "underscore", "catalyze", "catalyzed", "ramifications", "socio-economic",
+    "bourgeois", "stratification", "epicenters", "multifaceted", "pivotal",
+    "paramount", "intricate", "meticulous", "encompasses", "fostering",
+    "realm", "beacon", "unprecedented", "transformative", "crucially",
+    "notably", "subsequently", "culmination", "dichotomy", "paradigm",
+    "synergy", "ubiquitous", "plethora", "myriad", "bolster", "burgeoning",
+    "indispensable", "quintessential", "nuanced", "overarching", "spearheaded"
+  ];
+
+  function computeShannonEntropy(str) {
+    if (!str || str.length === 0) return 0;
+    const freq = {};
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i].toLowerCase();
+      freq[ch] = (freq[ch] || 0) + 1;
+    }
+    let entropy = 0;
+    const len = str.length;
+    for (const ch in freq) {
+      const p = freq[ch] / len;
+      entropy -= p * Math.log2(p);
+    }
+    return entropy;
+  }
+
+  function scoreSingleSentence(sentence) {
+    const clean = sentence.trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length < 4) return { score: 0, matches: [] };
+
+    const lowerSent = clean.toLowerCase();
+    const lowerWords = words.map(w => w.toLowerCase().replace(/[^a-z-]/g, ''));
+    const matches = [];
+
+    AI_PHRASE_PATTERNS.forEach(phrase => {
+      if (lowerSent.includes(phrase)) matches.push(`"${phrase}"`);
+    });
+
+    lowerWords.forEach(w => {
+      if (AI_SINGLE_TOKENS.includes(w)) matches.push(w);
+    });
+
+    const longWords = lowerWords.filter(w => w.length >= 8).length;
+    const longRatio = longWords / words.length;
+    const avgWordLen = lowerWords.reduce((s, w) => s + w.length, 0) / words.length;
+
+    let score = 0;
+    score += matches.length * 26;
+    if (longRatio > 0.30) score += Math.round((longRatio - 0.30) * 140);
+    if (avgWordLen > 5.8) score += Math.round((avgWordLen - 5.8) * 25);
+
+    if (words.length >= 15 && words.length <= 25 && longRatio > 0.25) {
+      score += 18;
+    }
+
+    return {
+      score: Math.min(100, score),
+      matches: matches
+    };
+  }
+
+  function highlightAISentencesInDOM() {
+    const childNodes = Array.from(essayBox.childNodes);
+    childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 25) {
+        const text = node.textContent;
+        const parts = text.match(/[^.!?]+[.!?]+(\s*)|[^.!?]+$/g);
+        if (!parts) return;
+
+        let foundAIInNode = false;
+        const frag = document.createDocumentFragment();
+
+        parts.forEach(part => {
+          const check = scoreSingleSentence(part);
+          if (check.score >= 45) {
+            foundAIInNode = true;
+            const span = document.createElement('span');
+            span.className = 'typed-ai-span';
+            span.textContent = part.trim();
+            frag.appendChild(span);
+            frag.appendChild(document.createTextNode(' '));
+          } else {
+            frag.appendChild(document.createTextNode(part));
+          }
+        });
+
+        if (foundAIInNode) {
+          essayBox.replaceChild(frag, node);
+        }
+      }
+    });
+  }
+
+  function runLocalStatisticalScan(logResult = false) {
+    const clone = essayBox.cloneNode(true);
+    clone.querySelectorAll('.verified-quote-span').forEach(q => q.remove());
+    const rawText = clone.innerText.trim();
+
+    if (rawText.length < 20) {
+      linguisticAIProb = 0;
+      updateDetectorUI(0, 50, 100, [], 0);
+      return;
+    }
+
+    const sentences = rawText.split(/[.!?]+/).map(s => s.trim()).filter(s => s.split(/\s+/).length >= 3);
+    const lengths = sentences.map(s => s.split(/\s+/).length);
+
+    let burstinessCV = 0.45;
+    if (lengths.length >= 2) {
+      const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+      const variance = lengths.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / lengths.length;
+      burstinessCV = mean > 0 ? (Math.sqrt(variance) / mean) : 0;
+    }
+    lastBurstScore = Math.min(100, Math.round(burstinessCV * 185));
+
+    let totalSentScore = 0;
+    let allMatches = [];
+    sentences.forEach(s => {
+      const res = scoreSingleSentence(s);
+      totalSentScore += res.score;
+      allMatches = allMatches.concat(res.matches);
+    });
+
+    const avgSentAIScore = sentences.length > 0 ? (totalSentScore / sentences.length) : 0;
+    const entropy = computeShannonEntropy(rawText);
+
+    lastPerplexityScore = Math.max(8, Math.min(100, Math.round(100 - avgSentAIScore * 0.85)));
+
+    let prob = avgSentAIScore * 0.8;
+    if (lengths.length >= 2 && lastBurstScore < 35) {
+      prob += (35 - lastBurstScore) * 0.75;
+    }
+    if (unverifiedPastes > 0) {
+      prob = Math.max(prob, 68);
+    }
+
+    linguisticAIProb = Math.max(0, Math.min(99, Math.round(prob)));
+    const uniqueMatches = [...new Set(allMatches)];
+
+    updateDetectorUI(linguisticAIProb, lastBurstScore, lastPerplexityScore, uniqueMatches, sentences.length);
+
+    if (logResult) {
+      highlightAISentencesInDOM();
+      logEvent(`Local Statistical Scan: ${linguisticAIProb}% AI | Burstiness: ${lastBurstScore} | Entropy: ${entropy.toFixed(2)} bits`, linguisticAIProb > 50 ? 'term-warn' : 'term-cite');
+    }
+  }
+
+  function toggleAPIVault() {
+    document.getElementById('api-vault').classList.toggle('open');
+  }
+
+  function updateEngineModeLabel() {
+    selectedProvider = document.getElementById('api-provider').value;
+    const lbl = document.getElementById('engine-active-label');
+    if (selectedProvider === 'local') {
+      lbl.textContent = 'Keystrokes + Audio/Cam + Linguistic AI';
+    } else {
+      lbl.textContent = `Engine: Live ${selectedProvider.toUpperCase()} API + Biometrics`;
+    }
+  }
+
+  function saveVaultSettings() {
+    selectedProvider = document.getElementById('api-provider').value;
+    runtimeApiKey = document.getElementById('session-api-key').value.trim();
+    updateEngineModeLabel();
+
+    const status = document.getElementById('vault-status');
+    if (selectedProvider === 'local') {
+      status.textContent = '● Local Offline Engine Active';
+    } else if (runtimeApiKey) {
+      status.textContent = '● Key Loaded in RAM (Hidden from Code)';
+      logEvent(`Loaded session credential for [${selectedProvider.toUpperCase()}] in RAM.`, 'term-cite');
+    } else {
+      status.textContent = '⚠ Enter Key or use Local Engine';
+    }
+    document.getElementById('api-vault').classList.remove('open');
+  }
+
+  async function triggerFullAIScan() {
+    runLocalStatisticalScan(true);
+    if (selectedProvider === 'local' || !runtimeApiKey) return;
+
+    const rawText = essayBox.innerText.trim();
+    if (rawText.length < 25) return;
+
+    logEvent(`Querying live ${selectedProvider.toUpperCase()} API engine...`, 'term-cite');
+    try {
+      if (selectedProvider === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(runtimeApiKey)}`;
+        const prompt = `Analyze this student essay text for AI generation. Return ONLY JSON: {"aiProbability": 0-100, "burstiness": 0-100, "perplexity": 0-100, "flaggedWords": []}. Text: """${rawText}"""`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+        const data = await res.json();
+        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+        linguisticAIProb = parsed.aiProbability ?? linguisticAIProb;
+        lastBurstScore = parsed.burstiness ?? lastBurstScore;
+        lastPerplexityScore = parsed.perplexity ?? lastPerplexityScore;
+        updateDetectorUI(linguisticAIProb, lastBurstScore, lastPerplexityScore, parsed.flaggedWords || [], 2);
+      }
+    } catch (err) {
+      logEvent(`Cloud API Error — fell back to Local Engine.`, 'term-warn');
+    }
+  }
+
+  function updateDetectorUI(prob, burst, perp, matches, sentenceCount) {
+    const probLabel = document.getElementById('ai-prob-label');
+    const probBar = document.getElementById('ai-prob-bar');
+    probBar.style.width = Math.max(3, prob) + '%';
+
+    if (prob < 30) {
+      probLabel.textContent = `${prob}% (Human Written)`;
+      probLabel.style.color = '#34a853';
+      probBar.style.background = '#34a853';
+    } else if (prob < 65) {
+      probLabel.textContent = `${prob}% (Mixed / Edited AI)`;
+      probLabel.style.color = '#fbc02d';
+      probBar.style.background = '#fbc02d';
+    } else {
+      probLabel.textContent = `${prob}% (Likely AI Generated)`;
+      probLabel.style.color = '#ff5252';
+      probBar.style.background = '#ff5252';
+    }
+
+    const burstLabel = document.getElementById('burst-label');
+    const burstBar = document.getElementById('burst-bar');
+    burstBar.style.width = Math.max(8, burst) + '%';
+    if (sentenceCount < 2) {
+      burstLabel.textContent = `Need 2+ sentences`;
+      burstLabel.style.color = '#9aa0a6';
+    } else if (burst >= 35) {
+      burstLabel.textContent = `${burst}/100 (High / Human)`;
+      burstLabel.style.color = '#34a853';
+      burstBar.style.background = '#34a853';
+    } else {
+      burstLabel.textContent = `${burst}/100 (Flat / Robotic)`;
+      burstLabel.style.color = '#ff5252';
+      burstBar.style.background = '#ff5252';
+    }
+
+    const perpLabel = document.getElementById('perp-label');
+    const perpBar = document.getElementById('perp-bar');
+    perpBar.style.width = perp + '%';
+    if (perp >= 70) {
+      perpLabel.textContent = `${perp}/100 (Natural Entropy)`;
+      perpLabel.style.color = '#34a853';
+      perpBar.style.background = '#34a853';
+    } else {
+      perpLabel.textContent = `${perp}/100 (Predictable LLM Syntax)`;
+      perpLabel.style.color = '#ffb74d';
+      perpBar.style.background = '#ff9800';
+    }
+
+    const wordsReadout = document.getElementById('ai-words-readout');
+    if (matches && matches.length > 0) {
+      wordsReadout.textContent = `Flagged AI Signatures (${matches.length}): ${matches.slice(0, 6).join(', ')}`;
+      wordsReadout.style.color = '#ff8a80';
+    } else {
+      wordsReadout.textContent = 'Flagged AI Signatures: None (Natural phrasing)';
+      wordsReadout.style.color = '#9aa0a6';
+    }
+
+    recalculateCombinedTrust();
+  }
+
+  function recalculateCombinedTrust() {
+    const aiPenalty = Math.round(linguisticAIProb * 0.45);
+    const jumpBonus = Math.min(5, cursorJumps);
+    trustScore = Math.max(10, Math.min(100, behaviorScore - aiPenalty + jumpBonus + oralBonus));
+    refreshScoreUI();
+  }
+
+  // =========================================================================
+  // ADMIN PASSCODE SYSTEM (Passcode: 1102)
+  // =========================================================================
+  function unlockAdmin() {
+    const input = document.getElementById('admin-pass-input');
+    const err = document.getElementById('pass-error');
+
+    if (input.value.trim() === '1102') {
+      document.body.classList.add('admin-unlocked');
+      err.style.display = 'none';
+      input.value = '';
+      runLocalStatisticalScan(true);
+      logEvent('ADMIN ACCESS GRANTED (Passcode 1102 verified).', 'term-cite');
+      drawWPMCanvas();
+    } else {
+      err.style.display = 'block';
+      input.value = '';
+      logEvent('WARNING: Failed admin passcode attempt!', 'term-warn');
+    }
+  }
+
+  function lockAdmin() {
+    document.body.classList.remove('admin-unlocked');
+    logEvent('Admin panel locked.');
+  }
+
+  // =========================================================================
+  // REAL WEBCAM PIXEL TRACKER
+  // =========================================================================
+  const video = document.getElementById('webcam-video');
+  const camCanvas = document.getElementById('cam-canvas');
+  const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
+
+  let webcamRunning = false;
+  let videoStream = null;
+  let centerRefX = 67;
+  let centerRefY = 50;
+  let smoothX = 67;
+  let smoothY = 50;
+  let smoothW = 42;
+  let smoothH = 52;
+  let lastFoundX = 67;
+  let lastFoundY = 50;
+  let consecutiveAwayTicks = 0;
+
+  function drawCamOffScreen() {
+    camCtx.fillStyle = '#000';
+    camCtx.fillRect(0, 0, 135, 100);
+    camCtx.fillStyle = '#888';
+    camCtx.font = '10px Arial';
+    camCtx.textAlign = 'center';
+    camCtx.fillText('Webcam Off', 67, 45);
+    camCtx.fillText('Click [Start Cam]', 67, 58);
+  }
+  drawCamOffScreen();
+
+  async function toggleWebcam() {
+    const btn = document.getElementById('cam-btn');
+    const calBtn = document.getElementById('cal-btn');
+    const pill = document.getElementById('cam-status-pill');
+
+    if (!webcamRunning) {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240, facingMode: 'user' }
+        });
+        video.srcObject = videoStream;
+        await video.play();
+        webcamRunning = true;
+        btn.textContent = '⏹ Stop Cam';
+        calBtn.style.display = 'inline-block';
+        pill.textContent = 'TRACKING ACTIVE';
+        pill.style.background = '#188038';
+        logEvent('Real webcam pixel tracker started.');
+      } catch (err) {
+        alert('Could not access webcam. Please allow camera permission!');
+        logEvent('Webcam error: ' + err.message, 'term-warn');
+      }
+    } else {
+      if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+      webcamRunning = false;
+      btn.textContent = '📷 Start Cam';
+      calBtn.style.display = 'none';
+      pill.textContent = 'CAMERA OFF';
+      pill.style.background = '#3c4043';
+      drawCamOffScreen();
+      logEvent('Webcam stopped.');
+    }
+  }
+
+  function calibrateFace() {
+    centerRefX = Math.round(smoothX);
+    centerRefY = Math.round(smoothY);
+    logEvent(`Calibrated center position at X:${centerRefX}, Y:${centerRefY}`);
+  }
+
+  setInterval(() => {
+    if (!webcamRunning || video.readyState < 2) return;
+
+    const W = camCanvas.width;
+    const H = camCanvas.height;
+
+    camCtx.save();
+    camCtx.scale(-1, 1);
+    camCtx.drawImage(video, -W, 0, W, H);
+    camCtx.restore();
+
+    const frame = camCtx.getImageData(0, 0, W, H);
+    const data = frame.data;
+
+    let sumX = 0, sumY = 0, count = 0;
+
+    for (let y = 8; y < H - 8; y += 2) {
+      for (let x = 8; x < W - 8; x += 2) {
+        const i = (y * W + x) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+        const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+
+        if (r > 55 && g > 35 && b > 20 && r > g && (r - g) >= 8 && cr >= 133 && cr <= 178 && cb >= 77 && cb <= 130) {
+          sumX += x;
+          sumY += y;
+          count++;
+        }
+      }
+    }
+
+    const totalSampled = ((W - 16) / 2) * ((H - 16) / 2);
+    const areaPercent = Math.round((count / totalSampled) * 100);
+    document.getElementById('face-size').textContent = areaPercent + '%';
+
+    const pill = document.getElementById('cam-status-pill');
+
+    if (count > 32) {
+      const rawX = sumX / count;
+      const rawY = sumY / count;
+
+      smoothX = smoothX * 0.65 + rawX * 0.35;
+      smoothY = smoothY * 0.65 + rawY * 0.35;
+
+      lastFoundX = Math.round(smoothX);
+      lastFoundY = Math.round(smoothY);
+      document.getElementById('face-xy').textContent = `${lastFoundX} , ${lastFoundY}`;
+
+      const distFromCenter = Math.hypot(smoothX - centerRefX, smoothY - centerRefY);
+      const isOffCenter = distFromCenter > 25;
+
+      camCtx.strokeStyle = isOffCenter ? '#ff5252' : '#00e676';
+      camCtx.lineWidth = 2;
+      camCtx.strokeRect(smoothX - smoothW / 2, smoothY - smoothH / 2, smoothW, smoothH);
+
+      if (isOffCenter) {
+        consecutiveAwayTicks++;
+        pill.textContent = 'HEAD OFF-CENTER';
+        pill.style.background = '#d93025';
+      } else {
+        consecutiveAwayTicks = 0;
+        pill.textContent = 'FACE CENTERED';
+        pill.style.background = '#188038';
+      }
+    } else {
+      consecutiveAwayTicks++;
+      document.getElementById('face-xy').textContent = 'NONE';
+      pill.textContent = 'NO FACE DETECTED!';
+      pill.style.background = '#d93025';
+      camCtx.strokeStyle = '#ff5252';
+      camCtx.lineWidth = 2;
+      camCtx.strokeRect(4, 4, W - 8, H - 8);
+    }
+
+    const awaySeconds = (consecutiveAwayTicks / 10).toFixed(1);
+    document.getElementById('away-secs').textContent = awaySeconds + 's';
+
+    if (consecutiveAwayTicks > 0 && consecutiveAwayTicks % 30 === 0) {
+      tabAndCamAlerts++;
+      document.getElementById('tabs-val').textContent = tabAndCamAlerts;
+      behaviorScore = Math.max(15, behaviorScore - 10);
+      recalculateCombinedTrust();
+      logEvent('WEBCAM ALERT: Student missing or looking away >3s!', 'term-warn');
+    }
+  }, 100);
+
+  // =========================================================================
+  // KEYSTROKE, PASTE HIGHLIGHTING & TELEMETRY LOGIC
+  // =========================================================================
+  const letters = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+  const keyCounts = {};
+  const keyGrid = document.getElementById('key-grid');
+  letters.forEach(ltr => {
+    keyCounts[ltr] = 0;
+    const cell = document.createElement('div');
+    cell.className = 'key-cell';
+    cell.id = 'key-' + ltr;
+    cell.textContent = ltr;
+    keyGrid.appendChild(cell);
+  });
+
+  function updateKeyHeatmap(char) {
+    const upper = char.toUpperCase();
+    if (keyCounts[upper] !== undefined) {
+      keyCounts[upper]++;
+      const cell = document.getElementById('key-' + upper);
+      const intensity = Math.min(1, keyCounts[upper] / 10);
+      cell.style.background = `rgba(26, 115, 232, ${0.3 + intensity * 0.7})`;
+      cell.style.color = '#fff';
+    }
+  }
+
+  setInterval(() => {
+    if (isTypingNow) {
+      secondsActive++;
+      const m = String(Math.floor(secondsActive / 60)).padStart(2, '0');
+      const s = String(secondsActive % 60).padStart(2, '0');
+      document.getElementById('time-val').textContent = `${m}:${s}`;
+    }
+
+    const now = Date.now();
+    recentKeyTimes = recentKeyTimes.filter(t => now - t < 5000);
+    const currentWPM = Math.round((recentKeyTimes.length / 5) * 12);
+    document.getElementById('wpm-readout').textContent = `${currentWPM} WPM`;
+
+    wpmHistory.shift();
+    wpmHistory.push(currentWPM);
+    drawWPMCanvas();
+  }, 1000);
+
+  function drawWPMCanvas() {
+    const canvas = document.getElementById('wpm-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#333';
+    ctx.beginPath();
+    ctx.moveTo(0, 23);
+    ctx.lineTo(canvas.width, 23);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#4dabf5';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const step = canvas.width / (wpmHistory.length - 1);
+    wpmHistory.forEach((val, idx) => {
+      const x = idx * step;
+      const y = canvas.height - Math.min(canvas.height - 4, (val / 100) * canvas.height) - 2;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  function logEvent(msg, cls = '') {
+    const time = new Date().toLocaleTimeString([], { hour12: false });
+    const div = document.createElement('div');
+    div.className = 'term-line ' + cls;
+    div.textContent = `[${time}] ${msg}`;
+    consoleLog.prepend(div);
+  }
+
+  function recordSnapshot() {
+    essaySnapshots.push(essayBox.innerHTML);
+    historySlider.max = essaySnapshots.length - 1;
+    historySlider.value = essaySnapshots.length - 1;
+    snapshotLabel.textContent = `Live (${essaySnapshots.length - 1} steps)`;
+  }
+
+  function scrubHistory(index) {
+    essayBox.innerHTML = essaySnapshots[index];
+    if (Number(index) === essaySnapshots.length - 1) {
+      snapshotLabel.textContent = `Live (${index} steps)`;
+    } else {
+      snapshotLabel.textContent = `Step #${index}`;
+    }
+    updateWordCount();
+    runLocalStatisticalScan(false);
+  }
+
+  function refreshScoreUI() {
+    const scoreEl = document.getElementById('score-display');
+    const statusEl = document.getElementById('status-text');
+    const boxEl = document.getElementById('trust-box');
+
+    scoreEl.textContent = trustScore + '%';
+    if (trustScore >= 85) {
+      scoreEl.style.color = '#34a853';
+      statusEl.style.color = '#34a853';
+      statusEl.textContent = 'VERIFIED HUMAN';
+      boxEl.style.borderColor = '#34a853';
+    } else if (trustScore >= 60) {
+      scoreEl.style.color = '#fbc02d';
+      statusEl.style.color = '#fbc02d';
+      statusEl.textContent = 'NEEDS REVIEW (MIXED)';
+      boxEl.style.borderColor = '#fbc02d';
+    } else {
+      scoreEl.style.color = '#ff5252';
+      statusEl.style.color = '#ff5252';
+      statusEl.textContent = 'FLAGGED: AI / PASTE';
+      boxEl.style.borderColor = '#ff5252';
+    }
+  }
+
+  function updateWordCount() {
+    const txt = essayBox.innerText.trim();
+    const w = txt ? txt.split(/\s+/).length : 0;
+    document.getElementById('word-counter').textContent = `${w} words | ${txt.length} chars`;
+  }
+
+  function moveCursorToEnd() {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(essayBox);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  essayBox.addEventListener('keydown', (e) => {
+    isTypingNow = true;
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => { isTypingNow = false; }, 2500);
+
+    const now = Date.now();
+    if (now - lastKeyTime > 3000 && totalKeys > 3) {
+      thinkingPauses++;
+      document.getElementById('pauses-val').textContent = thinkingPauses;
+      logEvent('Thinking pause (>3s) logged.');
+    }
+    lastKeyTime = now;
+    recentKeyTimes.push(now);
+
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      totalEdits++;
+      document.getElementById('edits-val').textContent = totalEdits;
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      totalKeys++;
+      document.getElementById('keys-val').textContent = totalKeys;
+      updateKeyHeatmap(e.key);
+    }
+
+    if (e.key === '.' || e.key === '!' || e.key === '?') {
+      setTimeout(() => {
+        highlightAISentencesInDOM();
+        runLocalStatisticalScan(false);
+      }, 50);
+    }
+  });
+
+  essayBox.addEventListener('input', () => {
+    updateWordCount();
+    recordSnapshot();
+    runLocalStatisticalScan(false);
+  });
+
+  essayBox.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!pastedText) return;
+
+    const span = document.createElement('span');
+    span.className = 'pasted-ai-span';
+    span.textContent = pastedText;
+
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(span);
+      range.setStartAfter(span);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      essayBox.appendChild(span);
+    }
+
+    essayBox.appendChild(document.createTextNode(' '));
+    moveCursorToEnd();
+
+    unverifiedPastes++;
+    document.getElementById('pastes-val').textContent = unverifiedPastes;
+    behaviorScore = Math.max(15, behaviorScore - 25);
+    updateWordCount();
+    recordSnapshot();
+    runLocalStatisticalScan(true);
+    logEvent(`ALERT: Clipboard paste (${pastedText.length} chars) flagged in RED!`, 'term-warn');
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      tabAndCamAlerts++;
+      document.getElementById('tabs-val').textContent = tabAndCamAlerts;
+      logEvent(`Tab switched (#${tabAndCamAlerts})`, 'term-warn');
+    }
+  });
+
+  function runStudentTypingDemo() {
+    const sentence = "Factory work was exhausting. Thousands of young people left small family farms to work twelve-hour shifts inside noisy textile mills. ";
+    const textNode = document.createTextNode('');
+    essayBox.appendChild(textNode);
+
+    let i = 0;
+    isTypingNow = true;
+    logEvent('Typing human sentences (natural burstiness & non-linear edits)...');
+
+    const timer = setInterval(() => {
+      if (i < sentence.length) {
+        textNode.textContent += sentence[i];
+        totalKeys++;
+        recentKeyTimes.push(Date.now());
+        document.getElementById('keys-val').textContent = totalKeys;
+        updateKeyHeatmap(sentence[i]);
+
+        if (i === 18 || i === 55) {
+          totalEdits++;
+          document.getElementById('edits-val').textContent = totalEdits;
+        }
+        if (i === 32) {
+          thinkingPauses++;
+          document.getElementById('pauses-val').textContent = thinkingPauses;
+          cursorJumps++;
+          updateCursorJumpUI();
+        }
+
+        updateWordCount();
+        recordSnapshot();
+        i++;
+      } else {
+        clearInterval(timer);
+        runLocalStatisticalScan(true);
+        logEvent('Human paragraph complete: High burstiness, organic cursor jumps.');
+      }
+    }, 28);
+  }
+
+  function runTypedAISimulation() {
+    const aiSentence = "Furthermore, this multifaceted transformation underscores the pivotal tapestry of unprecedented socio-economic ramifications.";
+    const span = document.createElement('span');
+    span.className = 'typed-ai-span';
+    essayBox.appendChild(span);
+    essayBox.appendChild(document.createTextNode(' '));
+
+    let i = 0;
+    isTypingNow = true;
+    logEvent('Simulating student re-typing ChatGPT text by hand...');
+
+    const timer = setInterval(() => {
+      if (i < aiSentence.length) {
+        span.textContent += aiSentence[i];
+        totalKeys++;
+        recentKeyTimes.push(Date.now());
+        document.getElementById('keys-val').textContent = totalKeys;
+        updateKeyHeatmap(aiSentence[i]);
+        updateWordCount();
+        recordSnapshot();
+        i++;
+      } else {
+        clearInterval(timer);
+        runLocalStatisticalScan(true);
+        logEvent('AI DETECTOR ALERT: Low-entropy AI syntax detected (Highlighted in ORANGE)!', 'term-warn');
+      }
+    }, 24);
+  }
+
+  function addVerifiedQuote() {
+    const span = document.createElement('span');
+    span.className = 'verified-quote-span';
+    span.textContent = 'According to historian Eric Foner, "Industrialization redefined the very meaning of American freedom" (Foner, p. 114).';
+    essayBox.appendChild(span);
+    essayBox.appendChild(document.createTextNode(' '));
+
+    verifiedQuotes++;
+    updateWordCount();
+    recordSnapshot();
+    runLocalStatisticalScan(false);
+    logEvent('Verified quote added (Excluded from AI penalty).', 'term-cite');
+  }
+
+  function runChatGPTPasteDemo() {
+    const span = document.createElement('span');
+    span.className = 'pasted-ai-span';
+    span.textContent = 'Moreover, the socio-economic ramifications of rapid urbanization catalyzed unprecedented bourgeois stratification across metropolitan epicenters.';
+    essayBox.appendChild(span);
+    essayBox.appendChild(document.createTextNode(' '));
+
+    unverifiedPastes++;
+    document.getElementById('pastes-val').textContent = unverifiedPastes;
+    behaviorScore = Math.max(20, behaviorScore - 30);
+    updateWordCount();
+    recordSnapshot();
+    runLocalStatisticalScan(true);
+    logEvent('CRITICAL: 147 chars pasted with 0 keystrokes + high AI token density!', 'term-warn');
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+  }
+
+  function resetEverything() {
+    localStorage.removeItem(VAULT_STORAGE_KEY);
+    essayBox.innerHTML = '';
+    secondsActive = 0;
+    totalKeys = 0;
+    totalEdits = 0;
+    thinkingPauses = 0;
+    unverifiedPastes = 0;
+    verifiedQuotes = 0;
+    tabAndCamAlerts = 0;
+    audioSpikes = 0;
+    cursorJumps = 0;
+    oralDefenseStatus = "Not Taken";
+    oralBonus = 0;
+    behaviorScore = 100;
+    linguisticAIProb = 0;
+    trustScore = 100;
+    essaySnapshots = [""];
+    historySlider.max = 0;
+    historySlider.value = 0;
+    snapshotLabel.textContent = 'Live (0 steps)';
+
+    document.getElementById('time-val').textContent = '00:00';
+    document.getElementById('keys-val').textContent = '0';
+    document.getElementById('edits-val').textContent = '0';
+    document.getElementById('pauses-val').textContent = '0';
+    document.getElementById('pastes-val').textContent = '0';
+    document.getElementById('tabs-val').textContent = '0';
+    document.getElementById('audio-alerts-val').textContent = '0';
+    updateCursorJumpUI();
+
+    letters.forEach(ltr => {
+      keyCounts[ltr] = 0;
+      const cell = document.getElementById('key-' + ltr);
+      cell.style.background = '#2d2e30';
+      cell.style.color = '#9aa0a6';
+    });
+
+    runLocalStatisticalScan(false);
+    refreshScoreUI();
+    updateWordCount();
+    consoleLog.innerHTML = '<div class="term-line">&gt; Reset complete &amp; Auto-Vault cleared.</div>';
+  }
+
+  async function showCertificate() {
+    runLocalStatisticalScan(false);
+    const signed = await buildSignedPayload();
+
+    document.getElementById('c-student').textContent = signed.student;
+    document.getElementById('c-title').textContent = signed.assignment;
+    document.getElementById('c-score').textContent = signed.combinedTrustScore + '%';
+    document.getElementById('c-ai-prob').textContent = signed.aiProbabilityPercent + '% AI Probability';
+    document.getElementById('c-linguistic').textContent = `Burstiness: ${signed.burstinessScore}/100 | Perplexity: ${signed.perplexityScore}/100`;
+    document.getElementById('c-keys').textContent = `${signed.keystrokes} keys / ${signed.backspaces} edits`;
+    document.getElementById('c-jumps').textContent = `${signed.nonLinearCursorJumps} non-linear jumps`;
+    document.getElementById('c-oral').textContent = signed.oralDefenseStatus;
+    document.getElementById('c-tabs').textContent = `${signed.camAndTabAlerts} cam/tab alerts | ${signed.audioVoiceSpikes} audio spikes`;
+    document.getElementById('c-pastes').textContent = signed.unverifiedPastes;
+    document.getElementById('c-sha256').textContent = signed.sha256Signature;
+    document.getElementById('c-essay-preview').innerHTML = essayBox.innerHTML || '<i>(No essay text recorded)</i>';
+
+    const verdict = document.getElementById('c-verdict');
+    if (trustScore >= 85) {
+      verdict.textContent = 'PASSED (HUMAN AUTHORSHIP)';
+      verdict.style.color = '#188038';
+    } else {
+      verdict.textContent = 'FLAGGED (AI / PASTE DETECTED)';
+      verdict.style.color = '#d93025';
+    }
+    document.getElementById('cert-modal').classList.add('show');
+  }
+
+  function closeCertModal() {
+    document.getElementById('cert-modal').classList.remove('show');
+  }
+
+  // Restore any saved session on page load
+  window.addEventListener('DOMContentLoaded', restoreFromAutoVault);
+</script>
+
+</body>
+</html>
