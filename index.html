@@ -659,7 +659,6 @@
     padding: 5px 0;
     font-size: 12px;
   }
-
   .cert-essay-preview {
     margin-top: 8px;
     padding: 10px;
@@ -1867,12 +1866,12 @@
     const input = document.getElementById('admin-pass-input');
     const err = document.getElementById('pass-error');
 
-    if (input.value.trim() === '1102') {
+    if (input.value.trim() === '1012') {
       document.body.classList.add('admin-unlocked');
       err.style.display = 'none';
       input.value = '';
       runLocalStatisticalScan(true);
-      logEvent('ADMIN ACCESS GRANTED (Passcode 1102 verified).', 'term-cite');
+      logEvent('ADMIN ACCESS GRANTED (Passcode 1012 verified).', 'term-cite');
       drawWPMCanvas();
     } else {
       err.style.display = 'block';
